@@ -13,7 +13,7 @@ const salt = bcrypt.genSaltSync(10)
 
 // middlewares 
 app.use(express.json())
-app.use(cors({credentials: true, origin: "http://localhost:5173"}))
+app.use(cors({credentials: true, origin: "http://localhost:5173" || "https://awoofbuyer.vercel.app/"}))
 app.use(cookieParser()) 
 
 // DATABASE URL 
@@ -89,10 +89,6 @@ app.post ("/newproduct", async (req, res) => {
 
 
 
-
-// ikennaexcel
-// dPdSb7PfKPKYNUJF
-// mongodb+srv://ikennaexcel:dPdSb7PfKPKYNUJF@awoofbuyer.qtll8.mongodb.net/?retryWrites=true&w=majority&appName=AwoofBuyer
 
 
 
