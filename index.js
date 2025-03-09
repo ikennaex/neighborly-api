@@ -8,12 +8,16 @@ require('dotenv').config()
 const { default: mongoose } = require("mongoose")
 const UserModel = require("./Models/User")
 const ProductModel = require("./Models/Products")
+const multer = require("multer")
+const uploadMiddleware = multer({dest:"uploads/"})
+const fs = require("fs")
 
 const salt = bcrypt.genSaltSync(10)
+const devMode = false
 
 // middlewares 
 app.use(express.json())
-app.use(cors({credentials: true, origin: "http://localhost:5173" || "https://awoofbuyer.vercel.app/"}))
+app.use(cors({credentials: true, origin: devMode ? "http://localhost:5173" : "https://awoofbuyer.vercel.app/"}))
 app.use(cookieParser()) 
 
 // DATABASE URL 
@@ -73,18 +77,31 @@ app.get("/profile", (req, res) => {
     res.json("Ikenna akano")
 })
 
-app.post ("/newproduct", async (req, res) => {
-    const {name, desc, price, category, img, vendor } = req.body;
+app.post ("/newproduct", uploadMiddleware.single("img") ,async (req, res) => {
+    const {name, desc, price, category, vendor } = req.body;
+    
+    // all fields are required
+    if (!name || !desc || !price || !category) {
+        return res.status(400).json({ message: "All fields are required" });
+    }
+    
+    // to add the extention form the img 
+    const {originalname, path} = req.file;
+    const parts =  originalname.split('.');
+    const ext = parts[parts.length - 1];
+    const newImg = path+"."+ext
+    fs.renameSync(path, newImg)
+    res.json(newImg) 
 
     try {
-        const productDoc = await ProductModel.create({name, desc, price, category, img, vendor}) 
+        const productDoc = await ProductModel.create({name, desc, price, category, imgUrl: [newImg], vendor}) 
         res.json(productDoc) 
 
     } catch (err) {
-        res.status(422).json({message: "Wrong input"})
+        res.status(422).json({message: "Wrong input"}) 
         console.log(err)
     } 
-
+ 
 })
 
 

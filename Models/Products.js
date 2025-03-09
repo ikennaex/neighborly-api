@@ -10,15 +10,15 @@ const ProductSchema = new Schema(
 
     price: { type: Number, required: true, min: [0] }, //this means proce cannot be less than zero
     category:  {
-        type: mongoose.Schema.Types.ObjectId,
+        type: String,
         ref: "CategoryModel", // Reference to a Category model
-        required: true,
+        // required: true,
       },
     vendor: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User", // Reference to a Vendor (User model)
-      required: true, 
-    },
+      // required: true, 
+    }, 
   },
   { timestamps: true }
 ); 
