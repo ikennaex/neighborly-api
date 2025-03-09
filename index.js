@@ -77,6 +77,7 @@ app.get("/profile", (req, res) => {
     res.json("Ikenna akano")
 })
 
+// add new product to the database with image upload
 app.post ("/newproduct", uploadMiddleware.single("img") ,async (req, res) => {
     const {name, desc, price, category, vendor } = req.body;
     
@@ -102,6 +103,16 @@ app.post ("/newproduct", uploadMiddleware.single("img") ,async (req, res) => {
         console.log(err)
     } 
  
+})
+
+// to get the products back from the database
+app.get('/allproducts', async (req, res)  => {
+    try {
+        const products = await ProductModel.find()
+        res.json(products)
+    } catch (err) {
+        res.json(err)
+    }
 })
 
 
