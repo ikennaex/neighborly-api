@@ -13,7 +13,7 @@ const uploadMiddleware = multer({dest:"uploads/"})
 const fs = require("fs")
 
 const salt = bcrypt.genSaltSync(10)
-const devMode = false  // set to true for local development
+const devMode = true  // set to true for local development
 
 // middlewares 
 app.use(express.json())
