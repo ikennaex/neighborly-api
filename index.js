@@ -17,7 +17,7 @@ const devMode = false
 
 // middlewares 
 app.use(express.json())
-app.use(cors({credentials: true, origin: devMode ? "http://localhost:5173" : "https://awoofbuyer.vercel.app/"}))
+app.use(cors({credentials: true, origin: devMode ? "http://localhost:5173" : "https://awoofbuyer.vercel.app"}))
 app.use(cookieParser()) 
 
 // DATABASE URL 
