@@ -14,10 +14,10 @@ const UserSchema = new Schema ({
     },
 
     // Vendor-specific fields 
-    fullName: { type: String },
-    businessName: { type: String },
+    businessName: { type: String }, 
     businessAddress: { type: String },
     phoneNumber: { type: String },
+    storeDescription: { type: String },
 }, {timestamps: true})
 
 const UserModel = mongoose.model("User", UserSchema)

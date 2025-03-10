@@ -13,7 +13,7 @@ const uploadMiddleware = multer({dest:"uploads/"})
 const fs = require("fs")
 
 const salt = bcrypt.genSaltSync(10)
-const devMode = false  // set to true for local development
+const devMode = false  // set to true for local development  
 
 // middlewares 
 app.use(express.json())
@@ -94,7 +94,7 @@ app.post ("/newproduct", uploadMiddleware.single("img") ,async (req, res) => {
     fs.renameSync(path, newImg)
 
     try {
-        const productDoc = await ProductModel.create({name, desc, price, category, imgUrl: [newImg],location, vendor}) 
+        const productDoc = await ProductModel.create({name, desc, price, category, imgUrl: [newImg], location, vendor}) 
         res.json(productDoc) 
 
     } catch (err) {
@@ -115,7 +115,26 @@ app.get('/allproducts', async (req, res)  => {
 })
 
 // upgrade to vendor
-app.put('/becomeavendor', (req, res) => {
+app.put('/becomeavendor', async (req, res) => {
+    const {businessName, address, phoneNumber, userInfo, storeDescription} = req.body
+
+    try {
+        const updatedUser = await UserModel.findByIdAndUpdate(userInfo.id, {
+            businessName,
+            businessAddress: address,
+            phoneNumber,
+            storeDescription,
+            role: "vendor"
+        }, { new: true }
+    )
+
+    if (!updatedUser) {
+        return res.status(404).json({ message: "User not found" });
+    }
+        res.json(updatedUser)
+    } catch (err) {
+        console.log(err)
+    }
     
 })
 
