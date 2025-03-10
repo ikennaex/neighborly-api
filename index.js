@@ -79,10 +79,10 @@ app.get("/profile", (req, res) => {
 
 // add new product to the database with image upload
 app.post ("/newproduct", uploadMiddleware.single("img") ,async (req, res) => {
-    const {name, desc, price, category, vendor } = req.body;
+    const {name, desc, price, category, location, vendor } = req.body;
     
     // all fields are required
-    if (!name || !desc || !price || !category) {
+    if (!name || !desc || !price || !category || !location) {
         return res.status(400).json({ message: "All fields are required" });
     }
     
@@ -94,7 +94,7 @@ app.post ("/newproduct", uploadMiddleware.single("img") ,async (req, res) => {
     fs.renameSync(path, newImg)
 
     try {
-        const productDoc = await ProductModel.create({name, desc, price, category, imgUrl: [newImg], vendor}) 
+        const productDoc = await ProductModel.create({name, desc, price, category, imgUrl: [newImg],location, vendor}) 
         res.json(productDoc) 
 
     } catch (err) {
