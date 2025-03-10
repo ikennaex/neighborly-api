@@ -13,17 +13,17 @@ const uploadMiddleware = multer({dest:"uploads/"})
 const fs = require("fs")
 
 const salt = bcrypt.genSaltSync(10)
-const devMode = true  // set to true for local development
+const devMode = false  // set to true for local development
 
 // middlewares 
 app.use(express.json())
 app.use(cors({credentials: true, origin: devMode ? "http://localhost:5173" : "https://awoofbuyer.vercel.app"}))
 app.use(cookieParser()) 
+app.use("/uploads", express.static(__dirname + "/uploads"))
 
 // DATABASE URL 
 
 mongoose.connect(process.env.MONGO_DB) 
-
 
 
 app.get('/test', (req, res) => {
@@ -92,7 +92,6 @@ app.post ("/newproduct", uploadMiddleware.single("img") ,async (req, res) => {
     const ext = parts[parts.length - 1];
     const newImg = path+"."+ext
     fs.renameSync(path, newImg)
-    res.json(newImg) 
 
     try {
         const productDoc = await ProductModel.create({name, desc, price, category, imgUrl: [newImg], vendor}) 
@@ -111,8 +110,13 @@ app.get('/allproducts', async (req, res)  => {
         const products = await ProductModel.find()
         res.json(products)
     } catch (err) {
-        res.json(err)
+        res.json(err) 
     }
+})
+
+// upgrade to vendor
+app.put('/becomeavendor', (req, res) => {
+    
 })
 
 
