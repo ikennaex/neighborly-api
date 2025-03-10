@@ -79,7 +79,7 @@ app.get("/profile", (req, res) => {
 
 // add new product to the database with image upload
 app.post ("/newproduct", uploadMiddleware.single("img") ,async (req, res) => {
-    const {name, desc, price, category, location, vendor } = req.body;
+    const {name, desc, price, category, location, vendor } = req.body; // add userinfo here to get the id
     
     // all fields are required
     if (!name || !desc || !price || !category || !location) {
@@ -136,6 +136,21 @@ app.put('/becomeavendor', async (req, res) => {
         console.log(err)
     }
     
+})
+
+// get a users who are vendors 
+app.get('/vendors', async(req, res) => {
+    try {
+        const vendors = await UserModel.find({role: "vendor"})
+        res.json(vendors)
+    } catch (err) {
+        console.log(err)
+    }
+})
+
+// to get vendor with id 
+app.get('/vendors:id', (req, res) => {
+    const vendor = UserModel.findById()
 })
 
 
