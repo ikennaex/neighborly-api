@@ -13,13 +13,27 @@ const uploadMiddleware = multer({dest:"uploads/"})
 const fs = require("fs")
 
 const salt = bcrypt.genSaltSync(10)
-const devMode = true  // set to true for local development  
+const devMode = false  // set to true for local development   
 
 // middlewares 
 app.use(express.json())
 app.use(cors({credentials: true, origin: devMode ? "http://localhost:5173" : "https://awoofbuyer.vercel.app"}))
 app.use(cookieParser()) 
 app.use("/uploads", express.static(__dirname + "/uploads"))
+
+
+// JWT MIDDLEWARE 
+const authenticateToken = (req, res, next) => {
+    const token = req.cookies.token; // Get token from cookies
+
+    if (!token) return res.sendStatus(401); // Unauthorized
+
+    jwt.verify(token, process.env.HASH_SECRET, (err, user) => {
+        if (err) return res.sendStatus(403); // Forbidden
+        req.user = user; // Attach user data to request
+        next();
+    });
+}; 
 
 // DATABASE URL 
 
@@ -62,23 +76,14 @@ app.post("/login", async(req, res) => {
 })
 
 // to get user profile details
-app.get("/profile", (req, res) => {
-    const secret = process.env.HASH_SECRET
-    const {token} = req.cookies
-    if (token) {
-        // this decodes the token and returns the value we stored in it which is the userData
-        jwt.verify(token, secret, {}, (err, userData) => {
-            if (err) throw err
-            res.json(userData)  // sending the userData to client
-        })
-    } else {
-        res.json("no token") 
-    }
-    res.json("Ikenna akano")
+app.get("/profile", authenticateToken, async (req, res) => {
+    //using middleware 
+    const user = await UserModel.findById(req.user.id) // id frim jwt in cookie
+    res.json(user)
 })
 
 // add new product to the database with image upload
-app.post ("/newproduct", uploadMiddleware.single("img") ,async (req, res) => {
+app.post ("/newproduct", uploadMiddleware.single("img"), authenticateToken, async (req, res) => {
     const {name, desc, price, category, location, vendor } = req.body; // add userinfo here to get the id
     
     // all fields are required
@@ -94,7 +99,7 @@ app.post ("/newproduct", uploadMiddleware.single("img") ,async (req, res) => {
     fs.renameSync(path, newImg)
 
     try {
-        const productDoc = await ProductModel.create({name, desc, price, category, imgUrl: [newImg], location, vendor}) 
+        const productDoc = await ProductModel.create({name, desc, price, category, imgUrl: [newImg], location, vendor: req.user.id}) 
         res.json(productDoc) 
 
     } catch (err) {
@@ -115,25 +120,27 @@ app.get('/allproducts', async (req, res)  => {
 })
 
 // upgrade to vendor
-app.put('/becomeavendor', async (req, res) => {
-    const {businessName, address, phoneNumber, userInfo, storeDescription} = req.body
+app.put('/becomeavendor',authenticateToken, async (req, res) => {
+    const {businessName, address, phoneNumber, storeDescription} = req.body
+    const userId = req.user.id  // user id from the token 
 
     try {
-        const updatedUser = await UserModel.findByIdAndUpdate(userInfo.id, {
+        const updatedUser = await UserModel.findByIdAndUpdate(req.user.id, {
             businessName,
             businessAddress: address,
             phoneNumber,
             storeDescription,
             role: "vendor"
-        }, { new: true }
+        }, { new: true } // to return updated document
     )
 
     if (!updatedUser) {
         return res.status(404).json({ message: "User not found" });
     }
-        res.json(updatedUser)
+        res.json(updatedUser)  // send updated user
     } catch (err) {
         console.log(err)
+        res.status(500).json({ message: "Server error" });
     }
     
 })

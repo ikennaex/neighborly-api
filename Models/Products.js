@@ -17,7 +17,7 @@ const ProductSchema = new Schema(
     vendor: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User", // Reference to a Vendor (User model)
-      // required: true, 
+      required: true, 
     }, 
   },
   { timestamps: true }
