@@ -45,10 +45,10 @@ app.get('/test', (req, res) => {
 })
 
 app.post('/register', async (req, res) => {
-    const {username, email, password} = req.body 
+    const {username, email, password, firstName, lastName} = req.body 
     try {
         const hashPass = bcrypt.hashSync(password, salt)
-        const userDoc = await UserModel.create({username, email, hashPass})
+        const userDoc = await UserModel.create({username, email, hashPass, firstName, lastName})
         res.json(userDoc) 
     } catch (e) {
         console.log(e) 
@@ -56,7 +56,7 @@ app.post('/register', async (req, res) => {
 })
 
 app.post("/login", async (req, res) => {
-    const { email, password } = req.body;
+    const { email, password, firstName, lastName } = req.body;
   
     const userDoc = await UserModel.findOne({ email });
     if (userDoc) {
