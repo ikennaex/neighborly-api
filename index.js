@@ -78,8 +78,14 @@ app.post("/login", async(req, res) => {
 // to get user profile details
 app.get("/profile", authenticateToken, async (req, res) => {
     //using middleware 
-    const user = await UserModel.findById(req.user.id) // id frim jwt in cookie
-    res.json(user)
+
+    try {
+        const user = await UserModel.findById(req.user.id) // id from jwt in cookie
+        res.json(user)
+    } catch (err) {
+        res.json("User not Authenticated")
+        console.log(err)
+    }
 })
 
 // add new product to the database with image upload
@@ -125,7 +131,7 @@ app.put('/becomeavendor',authenticateToken, async (req, res) => {
     const userId = req.user.id  // user id from the token 
 
     try {
-        const updatedUser = await UserModel.findByIdAndUpdate(req.user.id, {
+        const updatedUser = await UserModel.findByIdAndUpdate(userId, {
             businessName,
             businessAddress: address,
             phoneNumber,
