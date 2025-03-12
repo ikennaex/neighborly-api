@@ -55,25 +55,35 @@ app.post('/register', async (req, res) => {
     }
 })
 
-app.post("/login", async(req, res) => {
-    const { email, password} = req.body;
-
-    const userDoc = await UserModel.findOne({email})
+app.post("/login", async (req, res) => {
+    const { email, password } = req.body;
+  
+    const userDoc = await UserModel.findOne({ email });
     if (userDoc) {
-        const passOk = bcrypt.compareSync(password, userDoc.hashPass)
-        if (passOk) {
-            const secret = process.env.HASH_SECRET
-            // signing the name email id to the token so when we decrypt it we can get the info back
-            jwt.sign({email: userDoc.email, id: userDoc._id, name: userDoc.name}, secret, {}, (err , token) => {
-                if (err) throw err
-                res.cookie('token', token).json(userDoc) 
-            }) 
-        }
-    } else { 
-        
-        res.status(404).json("user not found")
+      const passOk = bcrypt.compareSync(password, userDoc.hashPass);
+      if (passOk) {
+        const secret = process.env.HASH_SECRET;
+        jwt.sign(
+          { email: userDoc.email, id: userDoc._id, name: userDoc.name },
+          secret,
+          {},
+          (err, token) => {
+            if (err) return res.status(500).json({ error: "Token generation failed" });
+            res.cookie("token", token, {
+              httpOnly: true,
+              secure: true, // Set to false if running on localhost without HTTPS
+              sameSite: "None", // Important for cross-origin cookies
+              maxAge: 1000 * 60 * 60 * 24, // Optional: cookie expiration (1 day)
+            }).json(userDoc);
+          }
+        );
+      } else {
+        res.status(400).json("Invalid credentials");
+      }
+    } else {
+      res.status(404).json("User not found");
     }
-})
+  });
 
 // to get user profile details
 app.get("/profile", authenticateToken, async (req, res) => {
