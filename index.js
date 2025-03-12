@@ -13,7 +13,7 @@ const uploadMiddleware = multer({dest:"uploads/"})
 const fs = require("fs")
 
 const salt = bcrypt.genSaltSync(10)
-const devMode = true  // set to true for local development   
+const devMode = false  // set to true for local development   
 
 // middlewares 
 app.use(express.json())
@@ -116,7 +116,7 @@ app.post ("/newproduct", uploadMiddleware.single("img"), authenticateToken, asyn
 
     try {
         const productDoc = await ProductModel.create({name, desc, price, category, imgUrl: [newImg], location, vendor: req.user.id}) 
-        res.json(productDoc) 
+        res.status(200).json(productDoc) 
 
     } catch (err) {
         res.status(422).json({message: "Wrong input"}) 
@@ -126,14 +126,14 @@ app.post ("/newproduct", uploadMiddleware.single("img"), authenticateToken, asyn
 })
 
 // to get the products back from the database
-app.get('/allproducts', async (req, res)  => {
+app.get('/allproducts', authenticateToken, async (req, res) => {
     try {
-        const products = await ProductModel.find()
-        res.json(products)
+        const products = await ProductModel.find();
+        res.status(200).json(products); // Add 200 OK status code
     } catch (err) {
-        res.json(err) 
+        res.status(500).json({ error: err.message }); // Return proper error message and status
     }
-})
+});
 
 // upgrade to vendor
 app.put('/becomeavendor',authenticateToken, async (req, res) => {
