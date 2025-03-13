@@ -135,6 +135,20 @@ app.get('/allproducts', authenticateToken, async (req, res) => {
     }
 });
 
+app.get('/product/:id', authenticateToken, async (req, res) => {
+    const id = req.params.id
+    try {
+        const product = await ProductModel.findById(id)
+        if (!product) {
+            return res.status(404).json({ message: "Product not found" });
+        }  // if product not found, send 404 status code and message
+        res.status(200).json(product)
+    } catch (err) {
+        console.log(err)
+        res.status(500).json({ error: "Cant get product" });
+    }
+})
+
 // upgrade to vendor
 app.put('/becomeavendor',authenticateToken, async (req, res) => {
     const {businessName, address, phoneNumber, storeDescription} = req.body
@@ -162,7 +176,7 @@ app.put('/becomeavendor',authenticateToken, async (req, res) => {
 })
 
 // get a users who are vendors 
-app.get('/vendors', async(req, res) => {
+app.get('/vendors', authenticateToken, async(req, res) => {
     try {
         const vendors = await UserModel.find({role: "vendor"})
         res.json(vendors)
