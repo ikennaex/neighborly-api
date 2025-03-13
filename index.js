@@ -186,7 +186,7 @@ app.get('/vendors', authenticateToken, async(req, res) => {
 })
 
 // to get vendor with id 
-app.get('/vendors:id', async (req, res) => {
+app.get('/vendors:id', authenticateToken, async (req, res) => {
     const id = req.params.id
 
     try {
