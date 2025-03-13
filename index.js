@@ -186,10 +186,37 @@ app.get('/vendors', authenticateToken, async(req, res) => {
 })
 
 // to get vendor with id 
-app.get('/vendors:id', (req, res) => {
-    const vendor = UserModel.findById()
+app.get('/vendors:id', async (req, res) => {
+    const id = req.params.id
+
+    try {
+        const vendor = await UserModel.findById({_id: id , role: "vendor"})
+        if (!vendor) {
+            return res.status(404).json({ message: "Vendor not found" });
+        }
+    } catch (err) {
+        console.log(err)
+        res.status(500).json({ message: "Server error" });
+    }
+
 })
 
+
+// all users 
+app.get("/users", authenticateToken, async (req, res) => {
+
+    try {
+        const users = await UserModel.find({})
+        res.json(users)
+    } catch (err) {
+        console.log(err)
+        res.status(500).json({ error: "Server error" });
+    }
+})
+
+
+//do later
+//
 
 
 
