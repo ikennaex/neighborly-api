@@ -197,6 +197,9 @@ app.put('/becomeavendor',authenticateToken, async (req, res) => {
 // get a users who are vendors 
 app.get('/vendors', authenticateToken, async(req, res) => {
     try {
+        if (req.user.role !== 'admin') {
+            return res.status(403).json({ message: 'Access denied. Admins only.' });
+        }
         const vendors = await UserModel.find({role: "vendor"})
         res.json(vendors)
     } catch (err) {
@@ -225,6 +228,10 @@ app.get('/vendors:id', authenticateToken, async (req, res) => {
 app.get("/users", authenticateToken, async (req, res) => {
 
     try {
+        if (req.user.role !== 'admin') {
+            return res.status(403).json({ message: 'Access denied. Admins only.' });
+        }
+        
         const users = await UserModel.find({})
         res.json(users)
     } catch (err) {
