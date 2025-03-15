@@ -248,7 +248,7 @@ app.get("/users", authenticateToken, async (req, res) => {
 app.post("/logout", (req, res) => {
     res.clearCookie("token", {
         httpOnly: true,
-        secure: true,
+        secure: false,
         sameSite: "None",
         maxAge: 0, // delete the cookie
     }).json({ message: "Logged out" });
