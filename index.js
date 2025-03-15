@@ -83,7 +83,7 @@ app.post("/login", async (req, res) => {
       if (passOk) {
         const secret = process.env.HASH_SECRET;
         jwt.sign(
-          { email: userDoc.email, id: userDoc._id, name: userDoc.name },
+          { email: userDoc.email, id: userDoc._id, name: userDoc.name, role: userDoc.role },
           secret,
           {},
           (err, token) => {
