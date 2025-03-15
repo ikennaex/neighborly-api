@@ -26,7 +26,7 @@ app.use("/uploads", express.static(__dirname + "/uploads"))
 const authenticateToken = (req, res, next) => {
     const token = req.cookies.token; // Get token from cookies
 
-    if (!token) return res.sendStatus(401).json({message: 'No token found'}); // Unauthorized
+    if (!token) return res.status(401).json({message: 'No token found'}); // Unauthorized
 
     jwt.verify(token, process.env.HASH_SECRET, (err, user) => {
         if (err) return res.sendStatus(403); // Forbidden
@@ -89,7 +89,7 @@ app.post("/login", async (req, res) => {
           (err, token) => {
             if (err) return res.status(500).json({ error: "Token generation failed" });
             res.cookie("token", token, {
-              httpOnly: true,
+              httpOnly: true, 
               secure: true, // Set to false if running on localhost without HTTPS
               sameSite: "None", // Important for cross-origin cookies // set to lax because frrontend is not depolyed yet
               maxAge: 1000 * 60 * 60 * 24, // Optional: cookie expiration (1 day)
@@ -113,7 +113,7 @@ app.get("/profile", authenticateToken, async (req, res) => {
         res.json(user)
     } catch (err) {
         res.json("User not Authenticated")
-        console.log(err)
+        console.log(err) 
     }
 })
 
