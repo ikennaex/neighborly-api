@@ -220,6 +220,7 @@ app.get('/vendor/:id', authenticateToken, async (req, res) => {
         if (!vendor) {
             return res.status(404).json({ message: "Vendor not found" });
         }
+        res.json(vendor)
     } catch (err) {
         console.log(err)
         res.status(500).json({ message: "Server error" });
