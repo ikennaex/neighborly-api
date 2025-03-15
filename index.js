@@ -90,8 +90,8 @@ app.post("/login", async (req, res) => {
             if (err) return res.status(500).json({ error: "Token generation failed" });
             res.cookie("token", token, {
               httpOnly: true,
-              secure: false, // Set to false if running on localhost without HTTPS
-              sameSite: "lax", // Important for cross-origin cookies // set to lax because frrontend is not depolyed yet
+              secure: true, // Set to false if running on localhost without HTTPS
+              sameSite: "None", // Important for cross-origin cookies // set to lax because frrontend is not depolyed yet
               maxAge: 1000 * 60 * 60 * 24, // Optional: cookie expiration (1 day)
             }).json(userDoc);
           }
