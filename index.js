@@ -70,6 +70,12 @@ app.post('/register', async (req, res) => {
 
 app.post("/login", async (req, res) => {
     const { email, password, firstName, lastName } = req.body;
+
+    // check email
+    const emailExists = await UserModel.findOne({ email });
+    if (!emailExists) {
+      return res.status(400).json({ message: "Email already exists" });
+    }
   
     const userDoc = await UserModel.findOne({ email });
     if (userDoc) {
