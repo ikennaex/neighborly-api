@@ -237,7 +237,6 @@ app.get("/users", authenticateToken, async (req, res) => {
             return res.status(403).json({ message: 'Access denied. Admins only.' });
         }
 
-
         const users = await UserModel.find({})
         res.json(users)
     } catch (err) {
@@ -245,6 +244,24 @@ app.get("/users", authenticateToken, async (req, res) => {
         res.status(500).json({ error: "Server error" });
     }
 })
+
+app.post("/logout", (req, res) => {
+    res.clearCookie("token", {
+        httpOnly: true,
+        secure: true,
+        sameSite: "None",
+        maxAge: 0, // delete the cookie
+    }).json({ message: "Logged out" });
+})
+
+// app.get("/user/:id", (req, res) => {
+//     const id = req.params.id
+
+//     // try {
+//     //     const userInfoUserModel.findById(id)
+        
+//     // }
+// })
 
 
 //do later
