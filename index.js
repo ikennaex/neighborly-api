@@ -90,7 +90,7 @@ app.post("/login", async (req, res) => {
             if (err) return res.status(500).json({ error: "Token generation failed" });
             res.cookie("token", token, {
               httpOnly: true, 
-              secure: true, // Set to false if running on localhost without HTTPS
+              secure: false, // Set to false if running on localhost without HTTPS
               sameSite: "None", // Important for cross-origin cookies // set to lax because frrontend is not depolyed yet
               maxAge: 1000 * 60 * 60 * 24, // Optional: cookie expiration (1 day)
             }).json(userDoc);
@@ -112,7 +112,7 @@ app.get("/profile", authenticateToken, async (req, res) => {
         const user = await UserModel.findById(req.user.id) // id from jwt in cookie
         res.json(user)
     } catch (err) {
-        res.json("User not Authenticated")
+        res.status(500).json("User not Authenticated")
         console.log(err) 
     }
 })
