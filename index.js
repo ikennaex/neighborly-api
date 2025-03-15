@@ -226,7 +226,6 @@ app.get('/vendor/:id', authenticateToken, async (req, res) => {
 
 // all users 
 app.get("/users", authenticateToken, async (req, res) => {
-    res.json(req.user)
 
     try {
         if (req.user.role !== 'admin') {
