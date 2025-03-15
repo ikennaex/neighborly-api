@@ -208,7 +208,7 @@ app.get('/vendors', authenticateToken, async(req, res) => {
 })
 
 // to get vendor with id 
-app.get('/vendors:id', authenticateToken, async (req, res) => {
+app.get('/vendor/:id', authenticateToken, async (req, res) => {
     const id = req.params.id
 
     try {
@@ -226,12 +226,14 @@ app.get('/vendors:id', authenticateToken, async (req, res) => {
 
 // all users 
 app.get("/users", authenticateToken, async (req, res) => {
+    res.json(req.user)
 
     try {
         if (req.user.role !== 'admin') {
             return res.status(403).json({ message: 'Access denied. Admins only.' });
         }
-        
+
+
         const users = await UserModel.find({})
         res.json(users)
     } catch (err) {
