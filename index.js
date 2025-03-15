@@ -216,7 +216,7 @@ app.get('/vendor/:id', authenticateToken, async (req, res) => {
     const id = req.params.id
 
     try {
-        const vendor = await UserModel.findById({_id: id , role: "vendor"})
+        const vendor = await UserModel.findOne({_id: id , role: "vendor"})
         if (!vendor) {
             return res.status(404).json({ message: "Vendor not found" });
         }
