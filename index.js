@@ -47,12 +47,18 @@ app.get('/test', (req, res) => {
 app.post('/register', async (req, res) => {
     const {username, email, password, firstName, lastName} = req.body 
 
-    const existingUser = await UserModel.findOne({ $or: [{ username }, { email }] });
+  // Check username
+  const usernameExists = await UserModel.findOne({ username });
+  if (usernameExists) {
+    return res.status(400).json({ message: "Username already exists" });
+  }
 
-    if (existingUser) {
-      return res.status(400).json({ message: "Username or Email already exists" });
-    }
-    
+  // Check email
+  const emailExists = await UserModel.findOne({ email });
+  if (emailExists) {
+    return res.status(400).json({ message: "Email already exists" });
+  }
+
     try {
         const hashPass = bcrypt.hashSync(password, salt)
         const userDoc = await UserModel.create({username, email, hashPass, firstName, lastName})
