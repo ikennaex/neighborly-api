@@ -74,7 +74,7 @@ app.post("/login", async (req, res) => {
     // check email
     const emailExists = await UserModel.findOne({ email });
     if (!emailExists) {
-      return res.status(400).json({ message: "Email already exists" });
+      return res.status(400).json({ message: "Email does not exist" });
     }
   
     const userDoc = await UserModel.findOne({ email });
