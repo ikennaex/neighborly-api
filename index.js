@@ -176,7 +176,7 @@ app.post(
   }
 );
 
-app.put("/editproduct/:id", async (req, res) => {
+app.put("/editproduct/:id", uploadMiddleware.single("img"), authenticateToken, async (req, res) => {
   const { id } = req.params;
   const { name, desc, price, category, location } = req.body;
   let updatedFields = { name, desc, price, category, location };
@@ -231,8 +231,7 @@ app.delete("/delete/:id", async (req, res) => {
     }
 
     // Check if the user is authorized:
-    // - If the user is admin, allow
-    // - If the user is vendor and owns the product, allow
+    // If the user is vendor and owns the product, allow
     if (
       req.user.role !== "admin" &&
       product.vendor.toString() !== req.user.id
