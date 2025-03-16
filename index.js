@@ -225,7 +225,7 @@ app.delete("/delete/:id", async (req, res) => {
   const { id } = req.params;
 
   try {
-    const product = await ProductModel.findByIdAndDelete(id);
+    const product = await ProductModel.findById(id);
     if (!product) {
       return res.status(404).json({ message: "Product not found" });
     }
@@ -255,6 +255,7 @@ app.delete("/delete/:id", async (req, res) => {
 
     res.status(200).json({ message: "Product deleted successfully" });
   } catch (err) {
+    console.error(err)
     res.status(500).json("server error");
   }
 });
