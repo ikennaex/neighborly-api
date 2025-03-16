@@ -221,7 +221,7 @@ app.put("/editproduct/:id", uploadMiddleware.single("img"), authenticateToken, a
 });
 
 // delete the product
-app.delete("/delete/:id", async (req, res) => {
+app.delete("/delete/:id", authenticateToken, async (req, res) => {
   const { id } = req.params;
 
   try {
