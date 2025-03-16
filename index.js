@@ -183,7 +183,7 @@ app.put("/editproduct/:id", uploadMiddleware.single("img"), authenticateToken, a
 
   try {
     // try to find product
-    const product = await ProductModel.findByIdAndUpdate(id);
+    const product = await ProductModel.findById(id);
 
     if (!product) {
       return res.status(404).json({ message: "Product not found" });
