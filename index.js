@@ -110,6 +110,8 @@ app.post("/login", async (req, res) => {
               httpOnly: true,
               secure: true, // Set to false if running on localhost without HTTPS
               sameSite: "None", // Important for cross-origin cookies // set to lax because frrontend is not depolyed yet
+              domain: ".awoofbuyer.vercel.app",
+              path: "/",
               maxAge: 1000 * 60 * 60 * 24, // Optional: cookie expiration (1 day)
             })
             .json(userDoc);
