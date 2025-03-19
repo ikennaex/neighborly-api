@@ -4,13 +4,14 @@ const {Schema} = mongoose;
 const UserSchema = new Schema ({
     firstName: {type: String, required: true},
     lastName: {type: String, required: true},
-    username: {type: String, unique: true},
-    email: {type: String, unique: true},
+    username: {type: String, unique: true, required: true},
+    email: {type: String, unique: true, required: true},
     hashPass: String,
     role: { 
         type: String, 
         enum: ['user', 'vendor', 'admin'], // this is to limit the input to specifuc roles
-        default: 'user' // default role for every user in "user"
+        default: 'user', // default role for every user in "user"
+        required: true 
     },
 
     // Vendor-specific fields 

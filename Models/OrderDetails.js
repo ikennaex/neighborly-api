@@ -9,7 +9,7 @@ const OrderSchema = new Schema ({
     },
     amount: {type: Number, required: true},
     reference: {type: String, required: true},
-    status: {type: String, required: true},
+    status: {type: String, enum: ["pending", "paid"], default: "pending", required: true},
 })
 
 const OrderModel = mongoose.model('OrderDetails', OrderSchema)
