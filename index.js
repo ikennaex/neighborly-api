@@ -11,6 +11,7 @@ const ProductModel = require("./Models/Products");
 const multer = require("multer");
 const uploadMiddleware = multer({ dest: "uploads/" });
 const fs = require("fs");
+const OrderModel = require("./Models/OrderDetails");
 
 const salt = bcrypt.genSaltSync(10);
 const devMode = true; // set to true for local development
@@ -366,6 +367,35 @@ app.post("/logout", (req, res) => {
     })
     .json({ message: "Logged out" });
 });
+
+// payment with paystack
+app.post("/verify-payment", authenticateToken, async(req, res) => {
+    const { reference } = req.body;
+    const user = req.user.id
+
+    try {
+        const response = axios.get(`https://api.paystack.co/transaction/verify/${reference}`, {
+            headers: {
+                Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
+            }
+        })
+
+        const data = response.data
+        res.json(data)
+        if (data.data.status === "success") {
+            // save order details to database
+            OrderModel.create({
+                userId: user,
+                amount: data.data.amount,
+                reference: data.data.reference,
+                status: "paid",
+            })
+        }
+    } catch (err) {
+        console.error(err)
+        res.status(500).json({ message: "Server error" })
+    }
+})
 
 // app.get("/user/:id", (req, res) => {
 //     const id = req.params.id
