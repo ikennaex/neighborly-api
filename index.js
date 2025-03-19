@@ -381,8 +381,6 @@ app.post("/verify-payment", authenticateToken, async(req, res) => {
             }
         })
 
-        const data = response.data
-        res.json(data)
         if (data.data.status === "success") {
             // save order details to database
             OrderModel.create({
@@ -392,6 +390,9 @@ app.post("/verify-payment", authenticateToken, async(req, res) => {
                 status: "paid",
             })
         }
+
+        const data = response.data
+        res.json(data)
     } catch (err) {
         console.error(err)
         res.status(500).json({ message: "Server error" })
