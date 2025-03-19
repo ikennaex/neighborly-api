@@ -107,11 +107,12 @@ app.post("/login", async (req, res) => {
             return res.status(500).json({ error: "Token generation failed" });
           res
             .cookie("token", token, {
-              httpOnly: true,
-              secure: true, // Set to false if running on localhost without HTTPS
-            //   sameSite: "None", // Important for cross-origin cookies // set to lax because frrontend is not depolyed yet
-              path: "/",
-              maxAge: 1000 * 60 * 60 * 24, // Optional: cookie expiration (1 day)
+                httpOnly: true,
+                secure: true, // Ensures it only works on HTTPS
+                sameSite: "None", // Required for cross-origin cookies
+                domain: "awoofbuyer.vercel.app",
+                path: "/",
+                maxAge: 1000 * 60 * 60 * 24, // 1 day
             })
             .json(userDoc);
         }
@@ -364,7 +365,8 @@ app.post("/logout", (req, res) => {
     .clearCookie("token", {
       httpOnly: true,
       secure: true,
-    //   sameSite: "None",
+      sameSite: "None",
+      domain: "awoofbuyer.vercel.app", // REMOVE the leading dot
       path: "/",
       maxAge: 0, // delete the cookie
     })
