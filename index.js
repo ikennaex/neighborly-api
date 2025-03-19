@@ -22,7 +22,7 @@ app.use(express.json());
 app.use(
   cors({
     credentials: true,
-    origin: devMode ? "http://localhost:5173" : "https://awoofbuyer.vercel.app",
+    origin: "https://awoofbuyer.vercel.app",
   })
 );
 app.use(cookieParser());
