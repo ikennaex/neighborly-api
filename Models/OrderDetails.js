@@ -7,6 +7,11 @@ const OrderSchema = new Schema ({
         ref: 'User', // reference to user model
         required: true
     },
+    vendor: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User', // reference to user model
+        required: true
+    },
     amount: {type: Number, required: true},
     reference: {type: String, required: true},
     status: {type: String, enum: ["pending", "paid"], default: "pending", required: true},

@@ -21,7 +21,7 @@ const devMode = true; // set to true for local development
 app.use(express.json());
 app.use(
   cors({
-    credentials: true,
+    credentials: false,
     origin: devMode ? "http://localhost:5173" : "https://awoofbuyer.vercel.app",
   })
 );
@@ -371,29 +371,45 @@ app.post("/logout", (req, res) => {
 
 // payment with paystack
 app.post("/verify-payment", authenticateToken, async(req, res) => {
-    const { reference } = req.body;
+    const { transaction, vendorId } = req.body;
+    const reference = transaction.reference
     const user = req.user.id
+    const paystackSecret = process.env.PAYSTACK_SECRET_KEY
 
     try {
-        const response = axios.get(`https://api.paystack.co/transaction/verify/${reference}`, {
+        const response = await axios.get(`https://api.paystack.co/transaction/verify/${reference}`, {
             headers: {
-                Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
+                Authorization: `Bearer ${paystackSecret}`,
             }
         })
 
+        const data = response.data 
         if (data.data.status === "success") {
             // save order details to database
             OrderModel.create({
-                userId: user,
-                amount: data.data.amount,
+                user: user,
+                vendor: vendorId,
+                amount: data.data.amount / 100,
                 reference: data.data.reference,
                 status: "paid",
             })
         }
 
-        const data = response.data
         res.json(data)
     } catch (err) {
+        console.error(err)
+        res.status(500).json({ message: "Server error" })
+    }
+})
+
+app.get("/transactions", authenticateToken, async (req, res) => {
+    try {
+        if (req.user.role !== "admin") {
+            return res.status(403).json({ message: "Access denied. Admins only." });
+          }
+        const orders = await OrderModel.find()
+        res.status(200).json(orders)
+    } catch(err) {
         console.error(err)
         res.status(500).json({ message: "Server error" })
     }
