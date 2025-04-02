@@ -15,14 +15,14 @@ const fs = require("fs");
 const OrderModel = require("./Models/OrderDetails");
 
 const salt = bcrypt.genSaltSync(10);
-const devMode = false; // set to true for local development
+const devMode = true; // set to true for local development
 
 // middlewares
 app.use(express.json());
 app.use(
   cors({
     credentials: true,
-    origin: "https://awoofbuyer.vercel.app",
+    origin: devMode? "http://localhost:5173" : "https://awoofbuyer.com",
   })
 );
 app.use(cookieParser());
@@ -110,7 +110,7 @@ app.post("/login", async (req, res) => {
                 httpOnly: true,
                 secure: true, // Ensures it only works on HTTPS
                 sameSite: "None", // Required for cross-origin cookies
-                domain: "awoofbuyer.vercel.app",
+                // domain: "awoofbuyer.vercel.app",
                 path: "/",
                 maxAge: 1000 * 60 * 60 * 24, // 1 day
             })
@@ -366,7 +366,7 @@ app.post("/logout", (req, res) => {
       httpOnly: true,
       secure: true,
       sameSite: "None",
-      domain: "awoofbuyer.vercel.app", // REMOVE the leading dot
+    //   domain: "awoofbuyer.vercel.app", // REMOVE the leading dot
       path: "/",
       maxAge: 0, // delete the cookie
     })
@@ -375,7 +375,7 @@ app.post("/logout", (req, res) => {
 
 // payment with paystack
 app.post("/verify-payment", authenticateToken, async(req, res) => {
-    const { transaction, vendorId } = req.body;
+    const { transaction, vendorId, vendorName, userName, fetchedProduct } = req.body;
     const reference = transaction.reference
     const user = req.user.id
     const paystackSecret = process.env.PAYSTACK_SECRET_KEY
@@ -391,8 +391,11 @@ app.post("/verify-payment", authenticateToken, async(req, res) => {
         if (data.data.status === "success") {
             // save order details to database
             OrderModel.create({
-                user: user,
-                vendor: vendorId,
+                userId: user,
+                userName: userName,
+                vendorId: vendorId,
+                vendorName: vendorName,
+                product: fetchedProduct,
                 amount: data.data.amount / 100,
                 reference: data.data.reference,
                 status: "paid",
@@ -418,6 +421,39 @@ app.get("/transactions", authenticateToken, async (req, res) => {
         res.status(500).json({ message: "Server error" })
     }
 })
+
+app.get("/transaction/:id", authenticateToken, async (req, res) => {
+  const userId = req.params.id
+
+  try {
+    const userTransaction = await OrderModel.find({userId})
+    if (!userTransaction) {
+      return res.status(404).json({ message: "Transaction not found" });
+    }
+    res.status(200).json(userTransaction)
+  } catch (err) {
+    console.log(err)
+    res.status(500).json({ message: "Server error" })
+  }
+})
+
+// vendor order 
+app.get("/orders/:id", authenticateToken, async (req, res) => {
+  const vendorId = req.params.id
+
+  try {
+    const vendorOrder = await OrderModel.find({vendorId})
+    if (!vendorOrder) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    res.status(200).json(vendorOrder)
+  } catch(err) {
+    console.log(err)
+    res.status(500).json({ message: "Server error" })
+  }
+})
+
 
 // app.get("/user/:id", (req, res) => {
 //     const id = req.params.id
