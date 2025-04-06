@@ -108,7 +108,7 @@ app.post("/login", async (req, res) => {
           res
             .cookie("token", token, {
                 httpOnly: true,
-                secure: false, // Ensures it only works on HTTPS
+                secure: true, // Ensures it only works on HTTPS
                 sameSite: "None", // Required for cross-origin cookies
                 // domain: "awoofbuyer.vercel.app",
                 path: "/",
