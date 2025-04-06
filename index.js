@@ -15,14 +15,14 @@ const fs = require("fs");
 const OrderModel = require("./Models/OrderDetails");
 
 const salt = bcrypt.genSaltSync(10);
-const devMode = true; // set to true for local development
+const devMode = false; // set to true for local development
 
 // middlewares
 app.use(express.json());
 app.use(
   cors({
     credentials: true,
-    origin: devMode? "http://localhost:5173" : "https://awoofbuyer.com",
+    origin: devMode? "http://localhost:5173" : "https://neighborly-44ly.onrender.com",
   })
 );
 app.use(cookieParser());
