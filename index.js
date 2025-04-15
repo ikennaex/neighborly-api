@@ -17,7 +17,7 @@ const OrderModel = require("./Models/OrderDetails");
 const port = process.env.PORT || 4000; // Use Passenger's assigned port or default to 3000
 
 const salt = bcrypt.genSaltSync(10);
-const devMode = true; // set to true for local development
+const devMode = false; // set to true for local development
 
 // middlewares
 app.use(express.json());
@@ -26,6 +26,7 @@ app.use(
     credentials: true,
     origin: ["http://localhost:5173", "https://neighborly-44ly.onrender.com"],  
     // https://neighborly.ng
+
   })
 );
 app.use(cookieParser());
