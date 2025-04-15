@@ -2,17 +2,19 @@ const express = require("express");
 const app = express();
 const cors = require("cors");
 const axios = require("axios");
-const bcrypt = require("bcrypt");
+const bcrypt = require("bcryptjs");
 const cookieParser = require("cookie-parser");
 const jwt = require("jsonwebtoken");
 require("dotenv").config();
-const { default: mongoose } = require("mongoose");
+const { default: mongoose } = require("mongoose"); 
 const UserModel = require("./Models/User");
 const ProductModel = require("./Models/Products");
 const multer = require("multer");
-const uploadMiddleware = multer({ dest: "uploads/" });
+const uploadMiddleware = multer({ dest: "uploads/", limits: { fileSize: 10 * 1024 * 1024 }, });
 const fs = require("fs");
 const OrderModel = require("./Models/OrderDetails");
+
+const port = process.env.PORT || 4000; // Use Passenger's assigned port or default to 3000
 
 const salt = bcrypt.genSaltSync(10);
 const devMode = true; // set to true for local development
@@ -22,7 +24,8 @@ app.use(express.json());
 app.use(
   cors({
     credentials: true,
-    origin: devMode? "http://localhost:5173" : "https://awoofbuyer.com",
+    origin: ["http://localhost:5173", "https://neighborly-44ly.onrender.com"],  
+    // https://neighborly.ng
   })
 );
 app.use(cookieParser());
@@ -39,14 +42,15 @@ const authenticateToken = (req, res, next) => {
     req.user = user; // Attach user data to request
     next();
   });
-};
+}; 
 
 // DATABASE URL
 
-mongoose.connect(process.env.MONGO_DB);
+mongoose.connect(process.env.MONGO_DB).then(() => console.log('Database connected'))
+.catch((err) => console.error('Error connecting to database:', err));;
 
-app.get("/test", (req, res) => {
-  res.json("IT IS WORKING");
+app.get("/test", (req, res) => { 
+  res.json("IT IS WORKING");   
 });
 
 app.post("/register", async (req, res) => {
@@ -75,7 +79,7 @@ app.post("/register", async (req, res) => {
     });
     res.json(userDoc);
   } catch (e) {
-    console.log(e);
+    console.error(e);
   }
 });
 
@@ -110,7 +114,6 @@ app.post("/login", async (req, res) => {
                 httpOnly: true,
                 secure: true, // Ensures it only works on HTTPS
                 sameSite: "None", // Required for cross-origin cookies
-                // domain: "awoofbuyer.vercel.app",
                 path: "/",
                 maxAge: 1000 * 60 * 60 * 24, // 1 day
             })
@@ -137,7 +140,7 @@ app.get("/profile", authenticateToken, async (req, res) => {
     }
     res.json(user);
   } catch (err) {
-    console.log(err);
+    console.error(err);
     res.status(500).json("User not Authenticated");
   }
 });
@@ -148,35 +151,47 @@ app.post(
   uploadMiddleware.single("img"),
   authenticateToken,
   async (req, res) => {
-    const { name, desc, price, category, location } = req.body; // user id is passed thriugh cookies in the request
+    const { name, desc, price, category, location } = req.body;
 
-    // all fields are required
+    // Validate all required fields
     if (!name || !desc || !price || !category || !location) {
       return res.status(400).json({ message: "All fields are required" });
     }
 
-    // to add the extention form the img
+    // Extract image details
+    if (!req.file) {
+      return res.status(400).json({ message: "Image is required" });
+    }
+
     const { originalname, path } = req.file;
     const parts = originalname.split(".");
     const ext = parts[parts.length - 1];
     const newImg = path + "." + ext;
-    fs.renameSync(path, newImg);
 
-    try {
-      const productDoc = await ProductModel.create({
-        name,
-        desc,
-        price,
-        category,
-        imgUrl: [newImg],
-        location,
-        vendor: req.user.id,
-      });
-      res.status(200).json(productDoc);
-    } catch (err) {
-      res.status(422).json({ message: "Wrong input" });
-      console.log(err);
-    }
+    // Rename the file asynchronously
+    fs.rename(path, newImg, async (err) => {
+      if (err) {
+        console.error("Error renaming file:", err);
+        return res.status(500).json({ message: "File rename failed" });
+      }
+
+      try {
+        const productDoc = await ProductModel.create({
+          name,
+          desc,
+          price,
+          category,
+          imgUrl: [newImg],
+          location,
+          vendor: req.user.id,
+        });
+
+        res.status(200).json(productDoc);
+      } catch (err) {
+        console.error("Database error:", err);
+        res.status(422).json({ message: "Wrong input" });
+      }
+    });
   }
 );
 
@@ -283,7 +298,7 @@ app.get("/product/:id", authenticateToken, async (req, res) => {
     } // if product not found, send 404 status code and message
     res.status(200).json(product);
   } catch (err) {
-    console.log(err);
+    console.error(err);
     res.status(500).json({ error: "Cant get product" });
   }
 });
@@ -311,7 +326,7 @@ app.put("/becomeavendor", authenticateToken, async (req, res) => {
     }
     res.json(updatedUser); // send updated user
   } catch (err) {
-    console.log(err);
+    console.error(err);
     res.status(500).json({ message: "Server error" });
   }
 });
@@ -325,7 +340,7 @@ app.get("/vendors", authenticateToken, async (req, res) => {
     const vendors = await UserModel.find({ role: "vendor" });
     res.json(vendors);
   } catch (err) {
-    console.log(err);
+    console.error(err);
   }
 });
 
@@ -340,7 +355,7 @@ app.get("/vendor/:id", authenticateToken, async (req, res) => {
     }
     res.json(vendor);
   } catch (err) {
-    console.log(err);
+    console.error(err);
     res.status(500).json({ message: "Server error" });
   }
 });
@@ -355,7 +370,7 @@ app.get("/users", authenticateToken, async (req, res) => {
     const users = await UserModel.find({});
     res.json(users);
   } catch (err) {
-    console.log(err);
+    console.error(err);
     res.status(500).json({ error: "Server error" });
   }
 });
@@ -365,8 +380,7 @@ app.post("/logout", (req, res) => {
     .clearCookie("token", {
       httpOnly: true,
       secure: true,
-      sameSite: "None",
-    //   domain: "awoofbuyer.vercel.app", // REMOVE the leading dot
+      sameSite: "None",  
       path: "/",
       maxAge: 0, // delete the cookie
     })
@@ -375,20 +389,19 @@ app.post("/logout", (req, res) => {
 
 // payment with paystack
 app.post("/verify-payment", authenticateToken, async(req, res) => {
-    const { transaction, vendorId, vendorName, userName, fetchedProduct } = req.body;
-    const reference = transaction.reference
+    const { transaction_id, vendorId, vendorName, userName, fetchedProduct } = req.body;
     const user = req.user.id
-    const paystackSecret = process.env.PAYSTACK_SECRET_KEY
+    const flutterwaveSecret = process.env.FLUTTERWAVE_SECRET_KEY
 
     try {
-        const response = await axios.get(`https://api.paystack.co/transaction/verify/${reference}`, {
+        const response = await axios.get(`https://api.flutterwave.com/v3/transactions/${transaction_id}/verify`, {
             headers: {
-                Authorization: `Bearer ${paystackSecret}`,
+                Authorization: `Bearer ${flutterwaveSecret}`, 
             }
         })
 
-        const data = response.data 
-        if (data.data.status === "success") {
+        const data = response.data
+        if (data.status === "success") {
             // save order details to database
             OrderModel.create({
                 userId: user,
@@ -396,8 +409,8 @@ app.post("/verify-payment", authenticateToken, async(req, res) => {
                 vendorId: vendorId,
                 vendorName: vendorName,
                 product: fetchedProduct,
-                amount: data.data.amount / 100,
-                reference: data.data.reference,
+                amount: data.data.amount,
+                reference: data.data.flw_ref,
                 status: "paid",
             })
         }
@@ -432,7 +445,7 @@ app.get("/transaction/:id", authenticateToken, async (req, res) => {
     }
     res.status(200).json(userTransaction)
   } catch (err) {
-    console.log(err)
+    console.error(err)
     res.status(500).json({ message: "Server error" })
   }
 })
@@ -449,22 +462,29 @@ app.get("/orders/:id", authenticateToken, async (req, res) => {
 
     res.status(200).json(vendorOrder)
   } catch(err) {
-    console.log(err)
+    console.error(err)
     res.status(500).json({ message: "Server error" })
   }
 })
 
+app.get("/categories/:categoryName", authenticateToken, async (req, res) => {
+  const category = req.params.categoryName
 
-// app.get("/user/:id", (req, res) => {
-//     const id = req.params.id
+  try {
+    const products = await ProductModel.find({category}) 
 
-//     // try {
-//     //     const userInfoUserModel.findById(id)
+    if (products.length === 0) {
+      return res.status(404).json({message: "No products found in this category"})
+    }
 
-//     // }
-// })
+    res.status(200).json(products)
 
-//do later
-//
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', err })
+  }
+})
 
-app.listen(4000);
+
+app.listen(port, () => {
+    console.log(`Server is running on port ${port}`);  
+}); 
