@@ -13,6 +13,7 @@ const multer = require("multer");
 const uploadMiddleware = multer({ dest: "uploads/", limits: { fileSize: 10 * 1024 * 1024 }, });
 const fs = require("fs");
 const OrderModel = require("./Models/OrderDetails");
+const AdsModel = require("./Models/Ads");
 
 const port = process.env.PORT || 4000; // Use Passenger's assigned port or default to 3000
 
@@ -55,7 +56,7 @@ app.get("/test", (req, res) => {
 });
 
 app.post("/register", async (req, res) => {
-  const { username, email, password, firstName, lastName } = req.body;
+  const { username, email, phoneNumber, password, firstName, lastName } = req.body;
 
   // Check username
   const usernameExists = await UserModel.findOne({ username });
@@ -69,11 +70,18 @@ app.post("/register", async (req, res) => {
     return res.status(400).json({ message: "Email already exists" });
   }
 
+  // check phone number 
+  const phoneNumberExist = await UserModel.findOne({phoneNumber})
+  if (phoneNumberExist) {
+    return res.status(400).json({message: "Email already exixts"})
+  }
+
   try {
     const hashPass = bcrypt.hashSync(password, salt);
     const userDoc = await UserModel.create({
       username,
       email,
+      phoneNumber,
       hashPass,
       firstName,
       lastName,
@@ -87,13 +95,16 @@ app.post("/register", async (req, res) => {
 app.post("/login", async (req, res) => {
   const { email, password } = req.body;
 
+  // Check if it's a phone number or an email using regex
+const isPhone = /^\d{10,15}$/.test(email);
+
   // check email
-  const emailExists = await UserModel.findOne({ email });
+  const emailExists = await UserModel.findOne(isPhone ? { phoneNumber: email } : { email }); // this checks for email and phone number
   if (!emailExists) {
-    return res.status(400).json({ message: "Email does not exist" });
+    return res.status(400).json({ message: "Email or Phone does not exist" });
   }
 
-  const userDoc = await UserModel.findOne({ email });
+  const userDoc = await UserModel.findOne(isPhone ? { phoneNumber: email } : { email }); 
   if (userDoc) {
     const passOk = bcrypt.compareSync(password, userDoc.hashPass);
     if (passOk) {
@@ -101,10 +112,11 @@ app.post("/login", async (req, res) => {
       jwt.sign(
         {
           email: userDoc.email,
+          phone: userDoc.phoneNumber,
           id: userDoc._id,
           name: userDoc.name,
           role: userDoc.role,
-        },
+        }, 
         secret,
         {},
         (err, token) => {
@@ -375,6 +387,99 @@ app.get("/users", authenticateToken, async (req, res) => {
     res.status(500).json({ error: "Server error" });
   }
 });
+
+app.post("/runadvert", authenticateToken, uploadMiddleware.single("img"), (req, res) => {  
+  const {duration, price, name, desc, link, location, vendorName} = req.body;
+  const userId = req.user.id;
+
+        // Validate all required fields
+        if (!name || !desc || !price || !duration || !link || !location || !vendorName ) {  
+          return res.status(400).json({ message: "All fields are required" });
+        }
+    
+        // Extract image details  
+        if (!req.file) {
+          return res.status(400).json({ message: "Image is required" });
+        }
+    
+        const { originalname, path } = req.file;
+        const parts = originalname.split(".");
+        const ext = parts[parts.length - 1];
+        const newImg = path + "." + ext;
+    
+        // Rename the file asynchronously
+        fs.rename(path, newImg, async (err) => {
+          if (err) {
+            console.error("Error renaming file:", err);
+            return res.status(500).json({ message: "File rename failed" });
+          }
+
+          try {
+            const adsDoc = await AdsModel.create({
+              duration,
+              vendorName,
+              img: newImg,
+              price,
+              name,
+              desc,
+              link,
+              location,
+              active:false,
+              vendorId: userId,
+              
+            });
+    
+            res.status(200).json(adsDoc);
+          } catch (err) {
+            console.error("Database error:", err);
+            res.status(422).json({ message: "Wrong input" });
+          }
+        
+
+        })
+  
+})
+
+app.get("/runadvert", authenticateToken, async (req, res) => {
+  try {
+    // if (req.user.role !== "admin") {
+    //     return res.status(403).json({ message: "Access denied. Admins only." });
+    //   }
+    const ads = await AdsModel.find()
+    res.status(200).json(ads)
+} catch(err) {
+    console.error(err) 
+    res.status(500).json({ message: "Server error" })  
+}
+})
+
+app.put("/runadvert", authenticateToken, async (req, res) => {
+  const { adId } = req.body;
+
+  if (req.user.role !== "admin") {
+    return res.status(403).json({ message: "Access denied. Admins only." }); 
+  }
+
+  if (!adId) {
+    return res.status(400).json({ message: "Ad ID is required" });
+  }
+
+  try {
+    const updatedAd = await AdsModel.findByIdAndUpdate( adId,
+      { active: true },
+      { new: true } // Return the updated document
+    );
+
+    if (!updatedAd) {
+      return res.status(404).json({ message: "Ad not found" });
+    }
+
+    res.status(200).json(updatedAd);
+  } catch (error) {
+    console.error("Error updating ad:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+})
 
 app.post("/logout", (req, res) => {
   res
