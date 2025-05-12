@@ -15,7 +15,10 @@ const fs = require("fs");
 const OrderModel = require("./Models/OrderDetails");
 const AdsModel = require("./Models/Ads");
 
-const port = process.env.PORT || 4000; // Use Passenger's assigned port or default to 3000
+// nodemailer 
+const nodemailer = require('nodemailer');
+
+const port = process.env.PORT || 4000; 
 
 const salt = bcrypt.genSaltSync(10);
 const devMode = false; // set to true for local development
@@ -25,7 +28,7 @@ app.use(express.json());
 app.use(
   cors({
     credentials: true,
-    origin: ["http://localhost:5173", "https://neighborly-44ly.onrender.com"],  
+    origin: ["http://localhost:5173", "https://neighborly-44ly.onrender.com", "https://neighborly.ng"],  
     // https://neighborly.ng
 
   })
@@ -294,11 +297,13 @@ app.delete("/delete/:id", authenticateToken, async (req, res) => {
 
 // to get the products back from the database
 app.get("/allproducts", authenticateToken, async (req, res) => {
+
   try {
-    const products = await ProductModel.find();
-    res.status(200).json(products); // Add 200 OK status code
-  } catch (err) {
-    res.status(500).json({ error: err.message }); // Return proper error message and status
+    const products = await ProductModel.find()
+
+    res.status(200).json(products);
+  } catch (err) { 
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -388,57 +393,71 @@ app.get("/users", authenticateToken, async (req, res) => {
   }
 });
 
-app.post("/runadvert", authenticateToken, uploadMiddleware.single("img"), (req, res) => {  
-  const {duration, price, name, desc, link, location, vendorName} = req.body;
+app.post("/runadvert", authenticateToken, uploadMiddleware.single("img"), async (req, res) => {
+  const { duration, price, name, desc, link, location, vendorName, reference } = req.body;
   const userId = req.user.id;
+  const paystackSecret = process.env.PAYSTACK_SECRET_KEY
 
-        // Validate all required fields
-        if (!name || !desc || !price || !duration || !link || !location || !vendorName ) {  
-          return res.status(400).json({ message: "All fields are required" });
-        }
-    
-        // Extract image details  
-        if (!req.file) {
-          return res.status(400).json({ message: "Image is required" });
-        }
-    
-        const { originalname, path } = req.file;
-        const parts = originalname.split(".");
-        const ext = parts[parts.length - 1];
-        const newImg = path + "." + ext;
-    
-        // Rename the file asynchronously
-        fs.rename(path, newImg, async (err) => {
-          if (err) {
-            console.error("Error renaming file:", err);
-            return res.status(500).json({ message: "File rename failed" });
-          }
+  console.log(reference)
 
-          try {
-            const adsDoc = await AdsModel.create({
-              duration,
-              vendorName,
-              img: newImg,
-              price,
-              name,
-              desc,
-              link,
-              location,
-              active:false,
-              vendorId: userId,
-              
-            });
-    
-            res.status(200).json(adsDoc);
-          } catch (err) {
-            console.error("Database error:", err);
-            res.status(422).json({ message: "Wrong input" });
-          }
-        
+  if (!name || !desc || !price || !duration || !link || !location || !vendorName || !reference) {
+    return res.status(400).json({ message: "All fields including payment reference are required" });
+  }
 
-        })
-  
-})
+  if (!req.file) {
+    return res.status(400).json({ message: "Image is required" });
+  }
+
+  try {
+    // Verify Paystack payment
+    const verifyUrl = `https://api.paystack.co/transaction/verify/${reference}`;
+    const response = await axios.get(verifyUrl, {
+      headers: {
+        Authorization: `Bearer ${paystackSecret}`, // Replace with your Paystack secret key
+      },
+    });
+
+    const paymentData = response.data;
+    if (paymentData.data.status !== "success") {
+      return res.status(400).json({ message: "Payment verification failed" });
+    }
+
+    // Continue with file rename
+    const { originalname, path } = req.file;
+    const ext = originalname.split(".").pop();
+    const newImg = path + "." + ext;
+
+    fs.rename(path, newImg, async (err) => {
+      if (err) {
+        console.error("Error renaming file:", err);
+        return res.status(500).json({ message: "File rename failed" });
+      }
+
+      try {
+        const adsDoc = await AdsModel.create({
+          duration,
+          vendorName,
+          img: newImg,
+          price,
+          name,
+          desc,
+          link,
+          location,
+          active: false,
+          vendorId: userId,
+        });
+
+        res.status(200).json(adsDoc);
+      } catch (err) {
+        console.error("Database error:", err);
+        res.status(422).json({ message: "Failed to save ad to database" });
+      }
+    });
+  } catch (err) {
+    console.error("Payment verification error:", err.message);
+    res.status(500).json({ message: "Could not verify payment" });
+  }
+});
 
 app.get("/runadvert", authenticateToken, async (req, res) => {
   try {
@@ -454,7 +473,7 @@ app.get("/runadvert", authenticateToken, async (req, res) => {
 })
 
 app.put("/runadvert", authenticateToken, async (req, res) => {
-  const { adId } = req.body;
+  const { adId, status } = req.body;
 
   if (req.user.role !== "admin") {
     return res.status(403).json({ message: "Access denied. Admins only." }); 
@@ -465,10 +484,44 @@ app.put("/runadvert", authenticateToken, async (req, res) => {
   }
 
   try {
+    const ad = await AdsModel.findById(adId).populate("vendorId");
+
+    if (!ad) {
+      return res.status(404).json({ message: "Ad not found" });
+    }
+
     const updatedAd = await AdsModel.findByIdAndUpdate( adId,
-      { active: true },
+      { active: status },
       { new: true } // Return the updated document
     );
+
+    if (status === true ) {
+
+      const transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+          user: process.env.EMAIL_USER,
+          pass: process.env.EMAIL_PASS,
+        },
+      });
+  
+      const mailOptions = {
+        from: `"Neighborly Ads" <${process.env.EMAIL_USER}>`,
+        to: ad.vendorId.email,
+        subject: 'Your Ad request has been approved',
+        html: `
+          <h2>Hi ${ad.vendorName},</h2>
+          <p>Your recent ad request has been approved</p>
+          <p>Login to your dashboard to view more details.</p>
+          <br>
+          <p>- Neighborly Team</p>
+        `
+      };
+  
+      await transporter.sendMail(mailOptions);
+    }
+
+
 
     if (!updatedAd) {
       return res.status(404).json({ message: "Ad not found" });
@@ -495,32 +548,64 @@ app.post("/logout", (req, res) => {
 
 // payment with paystack
 app.post("/verify-payment", authenticateToken, async(req, res) => {
-    const { transaction_id, vendorId, vendorName, userName, fetchedProduct } = req.body;
+    const { transaction, vendorId, vendorName, userName, product, fetchedProduct, vendorEmail } = req.body;
     const user = req.user.id
-    const flutterwaveSecret = process.env.FLUTTERWAVE_SECRET_KEY
+    const paystackSecret = process.env.PAYSTACK_SECRET_KEY
+    const reference = transaction.reference
 
     try {
-        const response = await axios.get(`https://api.flutterwave.com/v3/transactions/${transaction_id}/verify`, {
+        const response = await axios.get(`https://api.paystack.co/transaction/verify/${reference}`, {
             headers: {
-                Authorization: `Bearer ${flutterwaveSecret}`, 
+                Authorization: `Bearer ${paystackSecret}`, 
             }
         })
 
         const data = response.data
-        if (data.status === "success") {
+        if (data.data.status === "success") {
+
+          const exists = await OrderModel.findOne({ reference: data.data.reference });
+          if (exists) {
+            return res.status(200).json({ message: "Transaction already recorded" });
+          }
+
             // save order details to database
-            OrderModel.create({
+            await OrderModel.create({
                 userId: user,
                 userName: userName,
                 vendorId: vendorId,
                 vendorName: vendorName,
                 product: fetchedProduct,
-                amount: data.data.amount,
-                reference: data.data.flw_ref,
+                amount: data.data.amount/100,
+                reference: data.data.reference,
                 status: "paid",
             })
-        }
 
+            // Send email notification to vendor
+      const transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+          user: process.env.EMAIL_USER,
+          pass: process.env.EMAIL_PASS,
+        },
+      });
+
+      const mailOptions = {
+        from: `"Neighborly Orders" <${process.env.EMAIL_USER}>`,
+        to: vendorEmail,
+        subject: 'New Order Received',
+        html: `
+          <h2>Hi ${vendorName},</h2>
+          <p>You just received a new order from <strong>${userName}</strong>.</p>
+          <p><strong>Product:</strong> ${fetchedProduct?.name || 'N/A'}</p>
+          <p><strong>Amount:</strong> ₦${data.data.amount/100}</p>
+          <p>Login to your dashboard to view more details.</p>
+          <br>
+          <p>- Neighborly Team</p>
+        `
+      };
+
+      await transporter.sendMail(mailOptions);
+    }
         res.json(data)
     } catch (err) {
         console.error(err)
