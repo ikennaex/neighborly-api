@@ -15,6 +15,18 @@ const fs = require("fs");
 const OrderModel = require("./Models/OrderDetails");
 const AdsModel = require("./Models/Ads");
 
+// cloudinary
+const cloudinary = require('cloudinary').v2
+
+
+// cloudinary config
+cloudinary.config({
+  cloud_name: 'dbako1asj',
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET 
+})
+
+
 // nodemailer 
 const nodemailer = require('nodemailer');
 
@@ -162,6 +174,9 @@ app.get("/profile", authenticateToken, async (req, res) => {
 });
 
 // add new product to the database with image upload
+const util = require("util");
+const rename = util.promisify(fs.rename);
+
 app.post(
   "/newproduct",
   uploadMiddleware.single("img"),
@@ -169,45 +184,41 @@ app.post(
   async (req, res) => {
     const { name, desc, price, category, location } = req.body;
 
-    // Validate all required fields
     if (!name || !desc || !price || !category || !location) {
       return res.status(400).json({ message: "All fields are required" });
     }
 
-    // Extract image details
     if (!req.file) {
       return res.status(400).json({ message: "Image is required" });
     }
 
-    const { originalname, path } = req.file;
-    const parts = originalname.split(".");
-    const ext = parts[parts.length - 1];
-    const newImg = path + "." + ext;
+    try {
+      // Upload to Cloudinary directly from the temp path
+      const result = await cloudinary.uploader.upload(req.file.path, {
+        folder: "products",
+      });
 
-    // Rename the file asynchronously
-    fs.rename(path, newImg, async (err) => {
-      if (err) {
-        console.error("Error renaming file:", err);
-        return res.status(500).json({ message: "File rename failed" });
-      }
+      // Optional: delete the file locally after upload
+      fs.unlink(req.file.path, (err) => {
+        if (err) console.error("Failed to delete local file:", err);
+      });
 
-      try {
-        const productDoc = await ProductModel.create({
-          name,
-          desc,
-          price,
-          category,
-          imgUrl: [newImg],
-          location,
-          vendor: req.user.id,
-        });
+      // Save to database
+      const productDoc = await ProductModel.create({
+        name,
+        desc,
+        price,
+        category,
+        imgUrl: [result.secure_url],
+        location,
+        vendor: req.user.id,
+      });
 
-        res.status(200).json(productDoc);
-      } catch (err) {
-        console.error("Database error:", err);
-        res.status(422).json({ message: "Wrong input" });
-      }
-    });
+      res.status(200).json(productDoc);
+    } catch (err) {
+      console.error("Server error:", err);
+      res.status(500).json({ message: "Server error" });
+    }
   }
 );
 
@@ -393,71 +404,91 @@ app.get("/users", authenticateToken, async (req, res) => {
   }
 });
 
-app.post("/runadvert", authenticateToken, uploadMiddleware.single("img"), async (req, res) => {
-  const { duration, price, name, desc, link, location, vendorName, reference } = req.body;
-  const userId = req.user.id;
-  const paystackSecret = process.env.PAYSTACK_SECRET_KEY
+app.post(
+  "/runadvert",
+  authenticateToken,
+  uploadMiddleware.single("img"),
+  async (req, res) => {
+    const {
+      duration,
+      price,
+      name,
+      desc,
+      link,
+      location,
+      vendorName,
+      reference,
+    } = req.body;
 
-  console.log(reference)
+    const userId = req.user.id;
+    const paystackSecret = process.env.PAYSTACK_SECRET_KEY;
 
-  if (!name || !desc || !price || !duration || !link || !location || !vendorName || !reference) {
-    return res.status(400).json({ message: "All fields including payment reference are required" });
-  }
-
-  if (!req.file) {
-    return res.status(400).json({ message: "Image is required" });
-  }
-
-  try {
-    // Verify Paystack payment
-    const verifyUrl = `https://api.paystack.co/transaction/verify/${reference}`;
-    const response = await axios.get(verifyUrl, {
-      headers: {
-        Authorization: `Bearer ${paystackSecret}`, // Replace with your Paystack secret key
-      },
-    });
-
-    const paymentData = response.data;
-    if (paymentData.data.status !== "success") {
-      return res.status(400).json({ message: "Payment verification failed" });
+    if (
+      !name ||
+      !desc ||
+      !price ||
+      !duration ||
+      !link ||
+      !location ||
+      !vendorName ||
+      !reference
+    ) {
+      return res
+        .status(400)
+        .json({ message: "All fields including payment reference are required" });
     }
 
-    // Continue with file rename
-    const { originalname, path } = req.file;
-    const ext = originalname.split(".").pop();
-    const newImg = path + "." + ext;
+    if (!req.file) {
+      return res.status(400).json({ message: "Image is required" });
+    }
 
-    fs.rename(path, newImg, async (err) => {
-      if (err) {
-        console.error("Error renaming file:", err);
-        return res.status(500).json({ message: "File rename failed" });
+    try {
+      // Verify Paystack payment
+      const verifyUrl = `https://api.paystack.co/transaction/verify/${reference}`;
+      const response = await axios.get(verifyUrl, {
+        headers: {
+          Authorization: `Bearer ${paystackSecret}`,
+        },
+      });
+
+      const paymentData = response.data;
+      if (paymentData.data.status !== "success") {
+        return res
+          .status(400)
+          .json({ message: "Payment verification failed" });
       }
 
-      try {
-        const adsDoc = await AdsModel.create({
-          duration,
-          vendorName,
-          img: newImg,
-          price,
-          name,
-          desc,
-          link,
-          location,
-          active: false,
-          vendorId: userId,
-        });
+      // Upload to Cloudinary
+      const cloudinaryResult = await cloudinary.uploader.upload(req.file.path, {
+        folder: "ads",
+      });
 
-        res.status(200).json(adsDoc);
-      } catch (err) {
-        console.error("Database error:", err);
-        res.status(422).json({ message: "Failed to save ad to database" });
-      }
-    });
-  } catch (err) {
-    console.error("Payment verification error:", err.message);
-    res.status(500).json({ message: "Could not verify payment" });
+      // Remove local file
+      fs.unlink(req.file.path, (err) => {
+        if (err) console.error("Failed to delete local file:", err);
+      });
+
+      // Save ad to database
+      const adsDoc = await AdsModel.create({
+        duration,
+        vendorName,
+        img: cloudinaryResult.secure_url,
+        price,
+        name,
+        desc,
+        link,
+        location,
+        active: false,
+        vendorId: userId,
+      });
+
+      res.status(200).json(adsDoc);
+    } catch (err) {
+      console.error("Server error:", err.message);
+      res.status(500).json({ message: "Server error: " + err.message });
+    }
   }
-});
+);
 
 app.get("/runadvert", authenticateToken, async (req, res) => {
   try {
@@ -679,3 +710,67 @@ app.get("/categories/:categoryName", authenticateToken, async (req, res) => {
 app.listen(port, () => {
     console.log(`Server is running on port ${port}`);  
 }); 
+
+
+
+
+// product upload 
+
+// app.post(
+//   "/newproduct",
+//   uploadMiddleware.single("img"),
+//   authenticateToken,
+//   async (req, res) => {
+//     const { name, desc, price, category, location } = req.body;
+
+//     // Validate all required fields
+//     if (!name || !desc || !price || !category || !location) {
+//       return res.status(400).json({ message: "All fields are required" });
+//     }
+
+//     // Extract image details
+//     if (!req.file) {
+//       return res.status(400).json({ message: "Image is required" });
+//     }
+
+//     const { originalname, path } = req.file;
+//     const parts = originalname.split(".");
+//     const ext = parts[parts.length - 1];
+//     const newImg = path + "." + ext;
+
+//     // Rename the file asynchronously
+//     fs.rename(path, newImg, async (err) => {
+//       if (err) {
+//         console.error("Error renaming file:", err);
+//         return res.status(500).json({ message: "File rename failed" });
+//       }
+
+//       (async function () {
+//         const result = await cloudinary.uploader.upload(newImg)
+//         console.log(result)
+//       })
+
+//       try {
+
+//         const result = await cloudinary.uploader.upload(req.file.path, {
+//           folder: "products", // optional folder in your Cloudinary account
+//         });
+
+//         const productDoc = await ProductModel.create({
+//           name,
+//           desc,
+//           price,
+//           category,
+//           imgUrl: [result.secure_url],
+//           location,
+//           vendor: req.user.id,
+//         });
+
+//         res.status(200).json(productDoc);
+//       } catch (err) {
+//         console.error("Database error:", err);
+//         res.status(422).json({ message: "Wrong input" });
+//       }
+//     });
+//   }
+// );
