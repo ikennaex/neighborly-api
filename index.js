@@ -41,8 +41,6 @@ app.use(
   cors({
     credentials: true,
     origin: ["http://localhost:5173", "https://neighborly-44ly.onrender.com", "https://www.neighborly.ng"],  
-    // https://neighborly.ng
-
   })
 );
 app.use(cookieParser());
@@ -656,6 +654,7 @@ app.get("/transactions", authenticateToken, async (req, res) => {
         res.status(500).json({ message: "Server error" })
     }
 })
+
 
 app.get("/transaction/:id", authenticateToken, async (req, res) => {
   const userId = req.params.id
