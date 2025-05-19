@@ -18,7 +18,6 @@ const AdsModel = require("./Models/Ads");
 // cloudinary
 const cloudinary = require('cloudinary').v2
 
-
 // cloudinary config
 cloudinary.config({
   cloud_name: 'dbako1asj',
@@ -29,6 +28,16 @@ cloudinary.config({
 
 // nodemailer 
 const nodemailer = require('nodemailer');
+
+// nodemailer config 
+
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
+  },
+});
 
 const port = process.env.PORT || 4000; 
 
@@ -173,6 +182,7 @@ app.get("/profile", authenticateToken, async (req, res) => {
 
 // add new product to the database with image upload
 const util = require("util");
+const { sendProductAlertEmail } = require("./Utils/sendProductAlertEmail");
 const rename = util.promisify(fs.rename);
 
 app.post(
@@ -212,7 +222,14 @@ app.post(
         vendor: req.user.id,
       });
 
-      res.status(200).json(productDoc);
+      res.status(200).json(productDoc)
+
+      try {
+        await sendProductAlertEmail(productDoc)
+      } catch {
+        console.error("failed to send product upload email")
+      }
+
     } catch (err) {
       console.error("Server error:", err);
       res.status(500).json({ message: "Server error" });
@@ -525,14 +542,6 @@ app.put("/runadvert", authenticateToken, async (req, res) => {
     );
 
     if (status === true ) {
-
-      const transporter = nodemailer.createTransport({
-        service: 'gmail',
-        auth: {
-          user: process.env.EMAIL_USER,
-          pass: process.env.EMAIL_PASS,
-        },
-      });
   
       const mailOptions = {
         from: `"Neighborly Ads" <${process.env.EMAIL_USER}>`,
@@ -546,8 +555,14 @@ app.put("/runadvert", authenticateToken, async (req, res) => {
           <p>- Neighborly Team</p>
         `
       };
+
+      // try to send email to vendor and catch errors if they occur 
+      try {
+        await transporter.sendMail(mailOptions); 
+      } catch {
+        console.error(`Failed to send email to ${ad.vendorId.email}`, err.message);
+      }
   
-      await transporter.sendMail(mailOptions);
     }
 
 
@@ -610,13 +625,6 @@ app.post("/verify-payment", authenticateToken, async(req, res) => {
             })
 
             // Send email notification to vendor
-      const transporter = nodemailer.createTransport({
-        service: 'gmail',
-        auth: {
-          user: process.env.EMAIL_USER,
-          pass: process.env.EMAIL_PASS,
-        },
-      });
 
       const mailOptions = {
         from: `"Neighborly Orders" <${process.env.EMAIL_USER}>`,
@@ -633,7 +641,11 @@ app.post("/verify-payment", authenticateToken, async(req, res) => {
         `
       };
 
-      await transporter.sendMail(mailOptions);
+      try {
+        await transporter.sendMail(mailOptions);
+      } catch {
+        console.error("failed to send order email")
+      }
     }
         res.json(data)
     } catch (err) {
