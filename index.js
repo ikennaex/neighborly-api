@@ -49,7 +49,7 @@ app.use(express.json());
 app.use(
   cors({
     credentials: true,
-    origin: ["http://localhost:5173", "https://neighborly-44ly.onrender.com", "https://www.neighborly.ng"],  
+    origin: ["https://www.neighborly.ng", "https://neighborly.ng"],  
   })
 );
 app.use(cookieParser());
