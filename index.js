@@ -53,7 +53,7 @@ app.use(
   })
 );
 app.use(cookieParser());
-app.use("/uploads", express.static(__dirname + "/uploads"));
+// app.use("/uploads", express.static(__dirname + "/uploads"));
 
 // JWT MIDDLEWARE
 const authenticateToken = (req, res, next) => {
